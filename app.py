@@ -1,5 +1,6 @@
 import os
 import json
+import tkinter
 import threading
 import urllib.parse
 import pandas as pd
@@ -33,6 +34,35 @@ class App(ctk.CTk):
         else:
             self.show_main_ui()
 
+    def add_right_click_menu(self, widget):
+        menu = tkinter.Menu(widget, tearoff=0)
+
+        def paste_text():
+            try:
+                clipboard_content = self.clipboard_get()
+                try:
+                    widget.delete("sel.first", "sel.last")
+                except tkinter.TclError:
+                    pass
+                widget.insert("insert", clipboard_content)
+            except tkinter.TclError:
+                pass
+            return "break"
+
+        menu.add_command(label="Вырезать", command=lambda: widget.event_generate("<<Cut>>"))
+        menu.add_command(label="Копировать", command=lambda: widget.event_generate("<<Copy>>"))
+        menu.add_command(label="Вставить", command=paste_text)
+        menu.add_separator()
+        menu.add_command(label="Выделить все", command=lambda: widget.event_generate("<<SelectAll>>"))
+
+        def show_menu(event):
+            menu.post(event.x_root, event.y_root)
+
+        widget.bind("<Button-3>", show_menu)
+        widget.bind_class("Entry", "<Control-a>", lambda event: event.widget.select_range(0, 'end'))
+        widget.bind_class("Entry", "<Control-v>", lambda event: paste_text())
+
+
     def load_config(self):
         if os.path.exists(CONFIG_FILE):
             try:
@@ -53,7 +83,6 @@ class App(ctk.CTk):
 
     def show_setup_ui(self):
         self.clear_container()
-
         card = ctk.CTkFrame(self.main_container, fg_color="#FFFFFF", corner_radius=15)
         card.pack(fill="x", pady=50, padx=50)
 
@@ -62,14 +91,14 @@ class App(ctk.CTk):
         ctk.CTkLabel(card, text="Ссылка на Google Таблицу:", text_color="#4B5563", font=("Helvetica", 13)).pack(anchor="w", padx=30)
         url_entry = ctk.CTkEntry(card, width=400, height=35, fg_color="#F9FAFB", border_color="#D1D5DB", text_color="#111827")
         url_entry.pack(pady=(5, 15), padx=30)
-        if self.config_data.get("sheet_url"):
-            url_entry.insert(0, self.config_data.get("sheet_url"))
+        self.add_right_click_menu(url_entry)
+        if self.config_data.get("sheet_url"): url_entry.insert(0, self.config_data.get("sheet_url"))
 
         ctk.CTkLabel(card, text="Название листа (вкладки внизу):", text_color="#4B5563", font=("Helvetica", 13)).pack(anchor="w", padx=30)
         name_entry = ctk.CTkEntry(card, width=400, height=35, fg_color="#F9FAFB", border_color="#D1D5DB", text_color="#111827")
         name_entry.pack(pady=(5, 30), padx=30)
-        if self.config_data.get("sheet_name"):
-            name_entry.insert(0, self.config_data.get("sheet_name"))
+        self.add_right_click_menu(name_entry)
+        if self.config_data.get("sheet_name"): name_entry.insert(0, self.config_data.get("sheet_name"))
 
         def save_and_continue():
             url = url_entry.get().strip()
@@ -84,7 +113,6 @@ class App(ctk.CTk):
 
     def show_main_ui(self):
         self.clear_container()
-
         header_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
         header_frame.pack(fill="x", pady=(0, 15))
         ctk.CTkLabel(header_frame, text="Синхронизация закупок", font=("Helvetica", 24, "bold"), text_color="#111827").pack(side="left")
@@ -121,7 +149,7 @@ class App(ctk.CTk):
         self.log_box = ctk.CTkTextbox(self.main_container, height=150, state="disabled", fg_color="#111827", text_color="#10B981", font=("Consolas", 12))
         self.log_box.pack(fill="x", expand=True, pady=(0, 5))
 
-        ctk.CTkLabel(self.main_container, text="доля воркера 15 рублей", text_color="#0A0A0A", font=("Helvetica", 10)).pack(side="bottom", anchor="se")
+        ctk.CTkLabel(self.main_container, text="доля воркера 15 рублей", text_color="#B0B0B0", font=("Helvetica", 10)).pack(side="bottom", anchor="se")
 
     def select_file(self, string_var):
         filepath = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
